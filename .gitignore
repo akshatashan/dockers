@@ -7,4 +7,6 @@
 .vscode
 *.DS_Store
 *.ipynb_checkpoints
+!target/classes
 target/*
+

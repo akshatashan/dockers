@@ -1,0 +1,80 @@
+version: '2'
+
+services:
+  entry:
+    build: gateway
+    container_name: gateway
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      ENTRY_PORT: 8080
+      KAFKA_ADDRESS: kafka:9093
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:3.3.0
+    container_name: zookeeper
+    restart: always
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:3.3.0
+    container_name: kafka
+    restart: always
+    links:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://localhost:9092,OUTSIDE://kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1      
+
+  beam:
+      image: maven:3.6-jdk-8
+      command: mvn compile
+      volumes:
+        - .:/usr/src/kafka
+        - $HOME/.m2:/root/.m2
+      working_dir: /usr/src/kafka
+      links:
+        - kafka
+
+  jobmanager:
+    image: flink:1.5
+    container_name: jobmanager
+    expose:
+      - "6123"
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - ./target/:/target
+
+  taskmanager:
+    image: flink:1.5
+    container_name: taskmanager
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+
+  exit:
+    build: visualise
+    container_name: visualise
+    restart: always
+    volumes:
+      - ./visualise/notebooks:/notebooks
+    ports:
+      - 8888:8888        
