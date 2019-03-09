@@ -1,0 +1,10 @@
+*.class
+*.lst
+*.prefs
+*.jar
+.classpath
+.project
+.vscode
+*.DS_Store
+*.ipynb_checkpoints
+target/*
